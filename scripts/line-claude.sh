@@ -25,7 +25,16 @@ USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
 echo "[line-claude] Message from $USER_ID: $USER_MESSAGE"
 
-# Send typing indicator
+# Send immediate acknowledgment so user knows we received it
+ACK_PAYLOAD=$(jq -n \
+    --arg to "$USER_ID" \
+    '{endpoint: "/v2/bot/message/push", body: {to: $to, messages: [{type: "text", text: "Got it! Let me think..."}]}}')
+
+curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
+    -H "Content-Type: application/json" \
+    -d "$ACK_PAYLOAD"
+
+# Send typing indicator while processing
 curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg chatId "$USER_ID" '{endpoint: "/v2/bot/chat/loading/start", body: {chatId: $chatId, loadingSeconds: 60}}')" &
