@@ -53,9 +53,7 @@ start_daemon() {
 
     # Send initial system message
     log "Sending system prompt..."
-    cat >&3 <<'INIT'
-{"type":"user","message":{"role":"user","content":"You are Moneta, a helpful LINE bot assistant. Keep all responses concise (under 200 characters). Be friendly and helpful. Do not use markdown or special formatting."}}
-INIT
+    echo '{"type":"user","message":{"role":"user","content":"You are Moneta, a helpful LINE bot assistant. Keep responses under 200 chars. Be friendly."}}' >&3
 
     log "Daemon ready"
 }
