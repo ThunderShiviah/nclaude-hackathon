@@ -1,9 +1,8 @@
 # Environment files with secrets
 .env
 
-# Claude skills with credentials
-.claude/skills/line-message.md
-.claude/skills/sprite-info.md
+# Claude skills with org-specific details
+.claude/skills/sprite-info/
 
 # Sprite config (org/sprite specific)
 .sprite

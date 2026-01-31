@@ -1,10 +1,13 @@
+---
+name: workflow
+description: Development workflow with branch protection and PR process
+---
+
 # Development Workflow
 
 ## Branch Protection
 
-The `main` branch is protected. Direct pushes are blocked.
-
-All changes must go through pull requests.
+The `main` branch is protected. Direct pushes are blocked. All changes must go through pull requests.
 
 ## Workflow Steps
 
@@ -36,12 +39,11 @@ All changes must go through pull requests.
 
 6. **Auto-deployment**
    - Merging to main triggers the GitHub webhook
-   - Sprite automatically runs `git pull` and restarts the webhook server
+   - Sprite automatically runs `git pull` and restarts webhook
    - Changes are live within seconds
 
 ## After Merging
 
-Clean up your local branch:
 ```bash
 git checkout main
 git pull origin main
