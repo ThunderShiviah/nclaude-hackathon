@@ -40,6 +40,16 @@ USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
 log "Message from $USER_ID: $USER_MESSAGE"
 
+# Send typing indicator immediately
+TYPING_PAYLOAD=$(jq -n \
+    --arg endpoint "/v2/bot/chat/loading" \
+    --arg chatId "$USER_ID" \
+    '{endpoint: $endpoint, body: {chatId: $chatId, loadingSeconds: 30}}')
+
+curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
+    -H "Content-Type: application/json" \
+    -d "$TYPING_PAYLOAD" > /dev/null 2>&1 &
+
 ensure_daemon
 
 # Generate unique request marker
