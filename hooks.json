@@ -1,12 +1,8 @@
 [
   {
     "id": "line-webhook",
-    "execute-command": "./scripts/forward-to-spoon.sh",
+    "execute-command": "./scripts/line-claude.sh",
     "command-working-directory": "/home/sprite/line-bot",
-    "pass-arguments-to-command": [
-      { "source": "string", "name": "line-claude.sh" },
-      { "source": "string", "name": "LINE_PAYLOAD" }
-    ],
     "pass-environment-to-command": [
       {
         "source": "entire-payload",
