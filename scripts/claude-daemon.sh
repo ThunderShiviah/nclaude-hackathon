@@ -27,7 +27,7 @@ start_daemon() {
         fi
     fi
 
-    # Clean up - remove everything and recreate
+    # Clean up
     rm -f "$INPUT_PIPE" "$OUTPUT_FILE" "$PID_FILE"
     mkfifo "$INPUT_PIPE"
     touch "$OUTPUT_FILE"
@@ -35,7 +35,6 @@ start_daemon() {
     log "Starting Claude daemon..."
 
     # Start Claude with stream-json via Python adapter
-    # Output goes to regular file (not pipe) for easy polling
     (
         tail -f "$INPUT_PIPE" 2>/dev/null | \
         "$SCRIPT_DIR/to-stream-json.py" | \
@@ -51,10 +50,20 @@ start_daemon() {
     echo "$CLAUDE_PID" > "$PID_FILE"
     log "Claude daemon started (PID $CLAUDE_PID)"
 
-    # Send initial system prompt
+    # Send system prompt
     sleep 2
     log "Sending system prompt..."
-    echo "You are Moneta, a helpful LINE bot assistant. Keep responses under 200 chars. Be friendly." > "$INPUT_PIPE"
+    cat > "$INPUT_PIPE" << 'PROMPT'
+You are Moneta, a helpful LINE bot assistant. Keep text responses under 200 chars.
+
+You can send LINE messages via curl to http://localhost:8080/hooks/send-message:
+
+Text: curl -X POST http://localhost:8080/hooks/send-message -H "Content-Type: application/json" -d '{"endpoint":"/v2/bot/message/push","body":{"to":"USER_ID","messages":[{"type":"text","text":"Hello!"}]}}'
+
+Sticker: curl -X POST http://localhost:8080/hooks/send-message -H "Content-Type: application/json" -d '{"endpoint":"/v2/bot/message/push","body":{"to":"USER_ID","messages":[{"type":"sticker","packageId":"6359","stickerId":"11069850"}]}}'
+
+The USER_ID will be provided with each message. Use Bash tool to send stickers or special messages.
+PROMPT
 
     log "Daemon ready"
 }
@@ -69,7 +78,6 @@ stop_daemon() {
         fi
         rm -f "$PID_FILE"
     fi
-    # Kill any lingering tail processes
     pkill -f "tail -f $INPUT_PIPE" 2>/dev/null || true
     rm -f "$INPUT_PIPE"
     log "Daemon stopped"
