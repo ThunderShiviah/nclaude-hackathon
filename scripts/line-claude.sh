@@ -42,13 +42,17 @@ log "Message from $USER_ID: $USER_MESSAGE"
 
 ensure_daemon
 
-# Record output position before sending
+# Generate unique request marker
+REQUEST_ID="REQ_$(date +%s%N)_$$"
+
+# Record output position AFTER ensuring daemon is ready
+sleep 0.5
 OUTPUT_POS=$(wc -c < "$OUTPUT_FILE" 2>/dev/null || echo 0)
 
-# Send message to daemon (plain text, adapter formats it)
-echo "$USER_MESSAGE" > "$INPUT_PIPE"
+# Send message with USER_ID so Claude can send messages directly
+echo "[USER_ID:$USER_ID] $USER_MESSAGE" > "$INPUT_PIPE"
 
-# Wait for response
+# Wait for response - only look at NEW output after our position
 TIMEOUT=30
 ELAPSED=0
 RESPONSE=""
@@ -57,19 +61,20 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
     sleep 1
     ELAPSED=$((ELAPSED + 1))
 
-    # Check for new output
     CURRENT_SIZE=$(wc -c < "$OUTPUT_FILE" 2>/dev/null || echo 0)
     if [ "$CURRENT_SIZE" -gt "$OUTPUT_POS" ]; then
-        # Extract new content
+        # Only read new content
         NEW_CONTENT=$(tail -c +$((OUTPUT_POS + 1)) "$OUTPUT_FILE")
         
-        # Look for assistant message - extract text from content array
+        # Get the LAST assistant message from new content only
         RESPONSE=$(echo "$NEW_CONTENT" | \
             grep '"type":"assistant"' | \
-            jq -r '.message.content[0].text // empty' 2>/dev/null | \
-            head -1 || true)
+            tail -1 | \
+            jq -r '.message.content[0].text // empty' 2>/dev/null || true)
         
         if [ -n "$RESPONSE" ]; then
+            # Update position so next request doesn't see this response
+            OUTPUT_POS=$CURRENT_SIZE
             break
         fi
     fi
@@ -82,7 +87,7 @@ fi
 
 log "Response: $RESPONSE"
 
-# Send to LINE via forwarder
+# Send to LINE via forwarder (Claude may have already sent via Bash tool)
 PAYLOAD=$(jq -n \
     --arg endpoint "/v2/bot/message/push" \
     --arg to "$USER_ID" \
