@@ -1,5 +1,31 @@
 [
   {
+    "id": "line-webhook",
+    "execute-command": "./scripts/line-claude.sh",
+    "command-working-directory": "/home/sprite/line-bot",
+    "pass-environment-to-command": [
+      {
+        "source": "entire-payload",
+        "envname": "LINE_PAYLOAD"
+      }
+    ],
+    "http-methods": ["POST"],
+    "include-command-output-in-response": false
+  },
+  {
+    "id": "send-message",
+    "execute-command": "./scripts/send-line-message.sh",
+    "command-working-directory": "/home/sprite/line-bot",
+    "pass-environment-to-command": [
+      {
+        "source": "entire-payload",
+        "envname": "LINE_MESSAGE_PAYLOAD"
+      }
+    ],
+    "http-methods": ["POST"],
+    "include-command-output-in-response": true
+  },
+  {
     "id": "github-sync",
     "execute-command": "./scripts/github-sync.sh",
     "command-working-directory": ".",

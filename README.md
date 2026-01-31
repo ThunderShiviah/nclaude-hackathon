@@ -1,52 +1,85 @@
 # nclaude-hackathon
 
-## GitHub Sync Webhook
+A Claude-powered LINE bot with automatic deployment via GitHub webhooks.
 
-Automatically syncs the local repository with remote changes when code is pushed to the main branch.
+## Features
 
-### Endpoint
+- **LINE Bot (Moneta)**: Claude-powered assistant that responds to LINE messages
+- **Dynamic LINE API**: Supports typing indicators, text messages, stickers, and more
+- **Auto-deployment**: GitHub push to main triggers automatic sync on sprite
+
+## Architecture
 
 ```
-POST /hooks/github-sync
+LINE User → LINE Platform → /hooks/line-webhook → Claude CLI → /hooks/send-message → LINE API
+GitHub Push → /hooks/github-sync → git pull → webhook restart
 ```
 
-### How It Works
+## Webhook Endpoints
 
-1. Receives push events from GitHub
-2. Verifies the webhook signature using HMAC-SHA256
-3. Runs `git fetch && git reset --hard origin/main`
-4. Restarts the webhook server
+| Endpoint | Purpose |
+|----------|---------|
+| `/hooks/line-webhook` | Receives LINE messages, invokes Claude |
+| `/hooks/send-message` | LINE API forwarder (adds auth token) |
+| `/hooks/github-sync` | Auto-deployment on push to main |
 
-### Setup
+## Setup
 
-1. Install [webhook](https://github.com/adnanh/webhook):
-   ```bash
-   # macOS
-   brew install webhook
+### Prerequisites
 
-   # Linux
-   apt-get install webhook
-   ```
+- [webhook](https://github.com/adnanh/webhook) installed
+- Claude CLI installed and authenticated
+- LINE Messaging API channel
 
-2. Set the webhook secret:
-   ```bash
-   export GITHUB_WEBHOOK_SECRET="your-secret-here"
-   ```
+### Environment Variables
 
-3. Start the webhook server:
-   ```bash
-   webhook -hooks hooks.json -verbose -port 9000
-   ```
+```bash
+# LINE Bot
+export LINE_CHANNEL_SECRET="your_channel_secret"
+export LINE_CHANNEL_ACCESS_TOKEN="your_channel_access_token"
 
-4. Configure GitHub webhook:
-   - Go to your repository → Settings → Webhooks → Add webhook
-   - Payload URL: `https://your-server.com/hooks/github-sync`
-   - Content type: `application/json`
-   - Secret: Same value as `GITHUB_WEBHOOK_SECRET`
-   - Events: Select "Just the push event"
+# GitHub Sync (optional)
+export GITHUB_WEBHOOK_SECRET="your_github_webhook_secret"
+```
 
-### Security
+### Start Webhook Server
 
-- All requests are verified using GitHub's HMAC-SHA256 signature
-- Only push events to the `main` branch trigger a sync
-- The webhook secret must be set via environment variable
+```bash
+webhook -hooks hooks.json -verbose -port 8080
+```
+
+### Configure LINE Webhook
+
+1. Go to [LINE Developers Console](https://developers.line.biz/console/)
+2. Set Webhook URL: `https://your-server.com/hooks/line-webhook`
+3. Enable "Use webhook"
+
+### Configure GitHub Webhook (Optional)
+
+1. Go to repository → Settings → Webhooks
+2. Payload URL: `https://your-server.com/hooks/github-sync`
+3. Content type: `application/json`
+4. Secret: Same as `GITHUB_WEBHOOK_SECRET`
+5. Events: "Just the push event"
+
+## Project Structure
+
+```
+.
+├── hooks.json                    # Webhook configuration
+├── scripts/
+│   ├── line-claude.sh           # Claude bot handler
+│   ├── send-line-message.sh     # LINE API forwarder
+│   └── github-sync.sh           # Auto-deployment script
+└── .claude/skills/              # Claude skills
+```
+
+## Security
+
+- LINE signature verification via HMAC-SHA256
+- GitHub webhook signature verification
+- LINE token isolated in forwarder (never exposed to Claude)
+
+## License
+
+MIT
