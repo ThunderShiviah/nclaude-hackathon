@@ -25,20 +25,6 @@ USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
 echo "[line-claude] Message from $USER_ID: $USER_MESSAGE"
 
-# Send immediate acknowledgment so user knows we received it
-ACK_PAYLOAD=$(jq -n \
-    --arg to "$USER_ID" \
-    '{endpoint: "/v2/bot/message/push", body: {to: $to, messages: [{type: "text", text: "Got it! Let me think..."}]}}')
-
-curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
-    -H "Content-Type: application/json" \
-    -d "$ACK_PAYLOAD"
-
-# Send typing indicator while processing
-curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
-    -H "Content-Type: application/json" \
-    -d "$(jq -n --arg chatId "$USER_ID" '{endpoint: "/v2/bot/chat/loading/start", body: {chatId: $chatId, loadingSeconds: 60}}')" &
-
 # Write context for Stop hook
 cat > /tmp/line-context.json << EOF
 {"user_id": "$USER_ID", "webhook_url": "$WEBHOOK_URL"}
@@ -50,11 +36,14 @@ USER_MESSAGE_ESCAPED=$(echo "$USER_MESSAGE" | jq -Rs '.')
 # Invoke Claude - response sent by Stop hook
 timeout 120 claude --continue --model opus -p "You are Moneta, a helpful LINE bot assistant.
 
+User ID: $USER_ID
 User message: $USER_MESSAGE_ESCAPED
 
-IMPORTANT: When you need to run commands, prefix them with: sprite -s spoon exec -- bash -c \"...\"
-This runs commands on the spoon compute sprite.
+FIRST: Send a brief acknowledgment message (e.g. 'On it!', 'Let me check...', 'Thinking about that...') using this curl command:
+curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{\"endpoint\": \"/v2/bot/message/push\", \"body\": {\"to\": \"$USER_ID\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_ACK_HERE\"}]}}'
 
-Respond helpfully. Your response will be sent to the user automatically."
+THEN: Process the request and respond. Your final response will be sent automatically.
+
+For any compute tasks, use: sprite -s spoon exec -- bash -c '...'"
 
 exit 0
