@@ -63,8 +63,11 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
         # Extract new content
         NEW_CONTENT=$(tail -c +$((OUTPUT_POS + 1)) "$OUTPUT_FILE")
         
-        # Look for assistant response in stream-json
-        RESPONSE=$(echo "$NEW_CONTENT" | grep -o '"text":"[^"]*"' | tail -1 | sed 's/"text":"//; s/"$//' || true)
+        # Look for assistant message - extract text from content array
+        RESPONSE=$(echo "$NEW_CONTENT" | \
+            grep '"type":"assistant"' | \
+            jq -r '.message.content[0].text // empty' 2>/dev/null | \
+            head -1 || true)
         
         if [ -n "$RESPONSE" ]; then
             break
