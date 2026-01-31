@@ -61,20 +61,28 @@ sprite -s $SPRITE_NAME exec "cd ~/workspace && <edit commands>"
 sprite -s $SPRITE_NAME exec "cd ~/workspace && git add . && git commit -m 'Description'"
 ```
 
-### 3. Push and create PR
+### 3. Push, create PR, and enable auto-merge
 
 ```bash
 sprite -s $SPRITE_NAME exec "cd ~/workspace && git push -u origin feature/description"
 sprite -s $SPRITE_NAME exec "cd ~/workspace && gh pr create --title 'Feature: description' --body 'Details...'"
+
+# Enable auto-merge (merges automatically when checks pass)
+sprite -s $SPRITE_NAME exec "cd ~/workspace && gh pr merge --auto --merge"
 ```
 
-### 4. After PR is merged - cleanup
+### 4. After PR merges - cleanup sandbox
 
 ```bash
+# Branch is auto-deleted by GitHub
+# Just destroy the sandbox sprite
 sprite -s $SPRITE_NAME destroy --force
 ```
 
-Production sprite auto-syncs when PR merges (GitHub webhook → SIGHUP reload).
+**What happens automatically:**
+1. PR merges when no conflicts (auto-merge)
+2. Branch deleted (GitHub setting)
+3. Production sprite syncs (GitHub webhook → SIGHUP reload)
 
 ## Quick Reference
 
@@ -86,6 +94,7 @@ Production sprite auto-syncs when PR merges (GitHub webhook → SIGHUP reload).
 | Create branch | `sprite exec "git checkout -b feature/x"` |
 | Push branch | `sprite exec "git push -u origin feature/x"` |
 | Create PR | `sprite exec "gh pr create"` |
+| Auto-merge | `sprite exec "gh pr merge --auto --merge"` |
 | Cleanup | `sprite -s sandbox-{id} destroy --force` |
 
 ## Why Sprite Isolation?
