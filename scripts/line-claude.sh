@@ -25,6 +25,39 @@ USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
 echo "[line-claude] Message from $USER_ID: $USER_MESSAGE"
 
+# Model preference file
+MODEL_PREF_FILE="/tmp/line-model-preference"
+
+# Handle model switching commands
+if [[ "$USER_MESSAGE" == "/haiku" ]]; then
+    echo "haiku" > "$MODEL_PREF_FILE"
+    # Send confirmation
+    jq -n --arg to "$USER_ID" --arg text "Switched to Haiku model (faster, lighter)" \
+        '{endpoint: "/v2/bot/message/push", body: {to: $to, messages: [{type: "text", text: $text}]}}' | \
+        curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" -H "Content-Type: application/json" -d @-
+    exit 0
+fi
+
+if [[ "$USER_MESSAGE" == "/opus" ]]; then
+    echo "opus" > "$MODEL_PREF_FILE"
+    # Send confirmation
+    jq -n --arg to "$USER_ID" --arg text "Switched to Opus model (most capable)" \
+        '{endpoint: "/v2/bot/message/push", body: {to: $to, messages: [{type: "text", text: $text}]}}' | \
+        curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" -H "Content-Type: application/json" -d @-
+    exit 0
+fi
+
+if [[ "$USER_MESSAGE" == "/model" ]]; then
+    CURRENT_MODEL=$(cat "$MODEL_PREF_FILE" 2>/dev/null || echo "opus")
+    jq -n --arg to "$USER_ID" --arg text "Current model: $CURRENT_MODEL. Use /haiku or /opus to switch." \
+        '{endpoint: "/v2/bot/message/push", body: {to: $to, messages: [{type: "text", text: $text}]}}' | \
+        curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" -H "Content-Type: application/json" -d @-
+    exit 0
+fi
+
+# Read model preference (default to opus)
+MODEL=$(cat "$MODEL_PREF_FILE" 2>/dev/null || echo "opus")
+
 # Log file for Claude output (can tail -f to watch)
 CLAUDE_LOG="/tmp/claude-stream.log"
 echo "" >> "$CLAUDE_LOG"
@@ -42,7 +75,8 @@ USER_MESSAGE_ESCAPED=$(echo "$USER_MESSAGE" | jq -Rs '.')
 
 # Invoke Claude with verbose output logged
 # Use --verbose and tee to capture streaming output
-timeout 240 claude --continue --model opus --verbose -p "You are Moneta, a helpful LINE bot assistant.
+echo "[line-claude] Using model: $MODEL" >> "$CLAUDE_LOG"
+timeout 240 claude --continue --model "$MODEL" --verbose -p "You are Moneta, a helpful LINE bot assistant.
 
 User ID: $USER_ID
 User message: $USER_MESSAGE_ESCAPED
