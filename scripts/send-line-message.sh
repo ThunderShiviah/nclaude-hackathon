@@ -1,6 +1,6 @@
 #!/bin/bash
-# LINE Message Forwarder
-# Receives userId and message, sends to LINE Push API
+# LINE API Forwarder
+# Forwards any LINE API request, adding authentication
 # Token is in environment, never exposed to callers
 
 if [ -z "$LINE_CHANNEL_ACCESS_TOKEN" ]; then
@@ -16,27 +16,32 @@ if [ -z "$PAYLOAD" ]; then
     exit 1
 fi
 
-# Extract userId and message using jq
-USER_ID=$(echo "$PAYLOAD" | jq -r '.userId // empty')
-MESSAGE=$(echo "$PAYLOAD" | jq -r '.message // empty')
+# Extract endpoint and body using jq
+ENDPOINT=$(echo "$PAYLOAD" | jq -r '.endpoint // empty')
+BODY=$(echo "$PAYLOAD" | jq -c '.body // empty')
+METHOD=$(echo "$PAYLOAD" | jq -r '.method // "POST"')
 
-if [ -z "$USER_ID" ] || [ -z "$MESSAGE" ]; then
-    echo '{"error": "Missing userId or message", "received": '"$PAYLOAD"'}'
+if [ -z "$ENDPOINT" ]; then
+    echo '{"error": "Missing endpoint", "received": '"$PAYLOAD"'}'
     exit 1
 fi
 
-# Send to LINE Push API
-RESPONSE=$(curl -s -X POST https://api.line.me/v2/bot/message/push \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
-    -d "{
-        \"to\": \"${USER_ID}\",
-        \"messages\": [
-            {
-                \"type\": \"text\",
-                \"text\": $(echo "$MESSAGE" | jq -Rs .)
-            }
-        ]
-    }")
+# Build the full URL
+BASE_URL="https://api.line.me"
+FULL_URL="${BASE_URL}${ENDPOINT}"
+
+# Forward to LINE API with authentication
+if [ "$BODY" = "null" ] || [ -z "$BODY" ]; then
+    # No body (e.g., GET requests or empty POST)
+    RESPONSE=$(curl -s -X "$METHOD" "$FULL_URL" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}")
+else
+    # With body
+    RESPONSE=$(curl -s -X "$METHOD" "$FULL_URL" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${LINE_CHANNEL_ACCESS_TOKEN}" \
+        -d "$BODY")
+fi
 
 echo "$RESPONSE"
