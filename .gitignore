@@ -1,0 +1,9 @@
+# Environment files with secrets
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
