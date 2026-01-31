@@ -39,8 +39,10 @@ timeout 120 claude --continue --model opus -p "You are Moneta, a helpful LINE bo
 User ID: $USER_ID
 User message: $USER_MESSAGE_ESCAPED
 
-FIRST: Send a brief acknowledgment message (e.g. 'On it!', 'Let me check...', 'Thinking about that...') using this curl command:
-curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{\"endpoint\": \"/v2/bot/message/push\", \"body\": {\"to\": \"$USER_ID\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_ACK_HERE\"}]}}'
+FIRST: Send a brief acknowledgment message using jq to safely escape the text:
+jq -n --arg to '$USER_ID' --arg text 'YOUR_ACK_HERE' '{endpoint: \"/v2/bot/message/push\", body: {to: \$to, messages: [{type: \"text\", text: \$text}]}}' | curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d @-
+
+Example acks: 'On it!', 'Let me check...', 'Working on that...'
 
 THEN: Process the request and respond. Your final response will be sent automatically.
 
