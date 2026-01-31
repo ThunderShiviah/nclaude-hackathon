@@ -30,13 +30,13 @@ Your task:
 3. Think of a helpful, friendly response to their message
 4. Send your response by calling the message forwarder endpoint
 
-To send your response, execute this curl command (replace USER_ID and YOUR_MESSAGE):
+To send your response, run this curl command:
 
-curl -s -X POST ${WEBHOOK_URL}/hooks/send-message \\
-  -H 'Content-Type: application/json' \\
-  -d '{\"userId\": \"USER_ID\", \"message\": \"YOUR_MESSAGE\"}'
+curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{"userId": "USER_ID_HERE", "message": "YOUR_MESSAGE_HERE"}'
 
-The forwarder will handle sending to LINE. You just provide userId and message." \
+Replace USER_ID_HERE with the actual userId. Replace YOUR_MESSAGE_HERE with your reply.
+
+CRITICAL: Use only plain text in your message. NO exclamation marks, NO quotes, NO backslashes, NO special characters. Keep it simple." \
   --allowedTools "Bash" --max-turns 3
 
 exit 0
