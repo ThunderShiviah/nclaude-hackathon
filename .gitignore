@@ -1,6 +1,9 @@
 # Environment files with secrets
 .env
 
+# Claude skills with credentials
+.claude/skills/line-message.md
+
 # OS files
 .DS_Store
 Thumbs.db
