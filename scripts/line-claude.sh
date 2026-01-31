@@ -25,6 +25,13 @@ USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
 echo "[line-claude] Message from $USER_ID: $USER_MESSAGE"
 
+# Log file for Claude output (can tail -f to watch)
+CLAUDE_LOG="/tmp/claude-stream.log"
+echo "" >> "$CLAUDE_LOG"
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') ===" >> "$CLAUDE_LOG"
+echo "User: $USER_MESSAGE" >> "$CLAUDE_LOG"
+echo "---" >> "$CLAUDE_LOG"
+
 # Write context for Stop hook
 cat > /tmp/line-context.json << EOF
 {"user_id": "$USER_ID", "webhook_url": "$WEBHOOK_URL"}
@@ -33,8 +40,9 @@ EOF
 # Escape message safely
 USER_MESSAGE_ESCAPED=$(echo "$USER_MESSAGE" | jq -Rs '.')
 
-# Invoke Claude - response sent by Stop hook
-timeout 240 claude --continue --model opus -p "You are Moneta, a helpful LINE bot assistant.
+# Invoke Claude with verbose output logged
+# Use --verbose and tee to capture streaming output
+timeout 240 claude --continue --model opus --verbose -p "You are Moneta, a helpful LINE bot assistant.
 
 User ID: $USER_ID
 User message: $USER_MESSAGE_ESCAPED
@@ -46,6 +54,6 @@ Example acks: 'On it!', 'Let me check...', 'Working on that...'
 
 THEN: Process the request and respond. Your final response will be sent automatically.
 
-For any compute tasks, use: sprite -s spoon exec -- bash -c '...'"
+For any compute tasks, use: sprite -s spoon exec -- bash -c '...'" 2>&1 | tee -a "$CLAUDE_LOG"
 
 exit 0
