@@ -28,25 +28,15 @@
   {
     "id": "github-sync",
     "execute-command": "./scripts/github-sync.sh",
-    "command-working-directory": ".",
+    "command-working-directory": "/home/sprite/line-bot",
     "pass-environment-to-command": [
       {
         "source": "entire-payload",
-        "name": "GITHUB_PAYLOAD"
+        "envname": "GITHUB_PAYLOAD"
       }
     ],
     "trigger-rule": {
       "and": [
-        {
-          "match": {
-            "type": "payload-hmac-sha256",
-            "secret": "{{ getenv \"GITHUB_WEBHOOK_SECRET\" | js }}",
-            "parameter": {
-              "source": "header",
-              "name": "X-Hub-Signature-256"
-            }
-          }
-        },
         {
           "match": {
             "type": "value",
