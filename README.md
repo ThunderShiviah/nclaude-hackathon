@@ -1,81 +1,84 @@
-# LINE Echo Bot
+# nclaude-hackathon
 
-A simple LINE bot that echoes user messages back to them, using [adnanh/webhook](https://github.com/adnanh/webhook).
+A Claude-powered LINE bot with automatic deployment via GitHub webhooks.
 
-## Prerequisites
+## Features
 
-- [webhook](https://github.com/adnanh/webhook) installed
-- A LINE Messaging API channel (create one at [LINE Developers Console](https://developers.line.biz/console/))
-- `curl` installed on your system
+- **LINE Bot (Moneta)**: Claude-powered assistant that responds to LINE messages
+- **Dynamic LINE API**: Supports typing indicators, text messages, stickers, and more
+- **Auto-deployment**: GitHub push to main triggers automatic sync on sprite
+
+## Architecture
+
+```
+LINE User → LINE Platform → /hooks/line-webhook → Claude CLI → /hooks/send-message → LINE API
+GitHub Push → /hooks/github-sync → git pull → webhook restart
+```
+
+## Webhook Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/hooks/line-webhook` | Receives LINE messages, invokes Claude |
+| `/hooks/send-message` | LINE API forwarder (adds auth token) |
+| `/hooks/github-sync` | Auto-deployment on push to main |
 
 ## Setup
 
-### 1. Get LINE Credentials
+### Prerequisites
 
-1. Go to the [LINE Developers Console](https://developers.line.biz/console/)
-2. Create a new provider (or use an existing one)
-3. Create a new Messaging API channel
-4. Note down your:
-   - **Channel Secret** (from the Basic settings tab)
-   - **Channel Access Token** (from the Messaging API tab - you may need to issue one)
+- [webhook](https://github.com/adnanh/webhook) installed
+- Claude CLI installed and authenticated
+- LINE Messaging API channel
 
-### 2. Configure Environment
+### Environment Variables
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
+# LINE Bot
+export LINE_CHANNEL_SECRET="your_channel_secret"
+export LINE_CHANNEL_ACCESS_TOKEN="your_channel_access_token"
 
-# Edit .env and add your LINE credentials
-# LINE_CHANNEL_SECRET=your_channel_secret_here
-# LINE_CHANNEL_ACCESS_TOKEN=your_channel_access_token_here
+# GitHub Sync (optional)
+export GITHUB_WEBHOOK_SECRET="your_github_webhook_secret"
 ```
 
-### 3. Start the Webhook Server
+### Start Webhook Server
 
 ```bash
-# Load environment variables and start webhook
-source .env && webhook -hooks hooks.json -verbose
+webhook -hooks hooks.json -verbose -port 8080
 ```
 
-By default, the webhook server listens on port 9000. The LINE webhook endpoint will be:
-```
-http://your-server:9000/hooks/line-webhook
-```
+### Configure LINE Webhook
 
-### 4. Configure LINE Webhook URL
-
-1. Go to your channel's Messaging API settings in LINE Developers Console
-2. Set the Webhook URL to your server's endpoint (e.g., `https://your-domain.com/hooks/line-webhook`)
+1. Go to [LINE Developers Console](https://developers.line.biz/console/)
+2. Set Webhook URL: `https://your-server.com/hooks/line-webhook`
 3. Enable "Use webhook"
-4. You can disable "Auto-reply messages" and "Greeting messages" for a cleaner experience
 
-**Note:** LINE requires HTTPS for webhook URLs. For local development, you can use tools like [ngrok](https://ngrok.com/) to create a secure tunnel.
+### Configure GitHub Webhook (Optional)
+
+1. Go to repository → Settings → Webhooks
+2. Payload URL: `https://your-server.com/hooks/github-sync`
+3. Content type: `application/json`
+4. Secret: Same as `GITHUB_WEBHOOK_SECRET`
+5. Events: "Just the push event"
 
 ## Project Structure
 
 ```
 .
-├── hooks.json           # Webhook configuration
+├── hooks.json                    # Webhook configuration
 ├── scripts/
-│   └── line-echo.sh    # Echo bot script
-├── .env.example        # Environment template
-├── .env                # Your credentials (not committed)
-└── README.md
+│   ├── line-claude.sh           # Claude bot handler
+│   ├── send-line-message.sh     # LINE API forwarder
+│   └── github-sync.sh           # Auto-deployment script
+└── .claude/skills/              # Claude skills
 ```
 
-## How It Works
+## Security
 
-1. User sends a message to your LINE bot
-2. LINE platform sends a webhook POST request to your server
-3. `webhook` verifies the request signature using your channel secret
-4. `webhook` extracts the `replyToken` and message `text` from the payload
-5. `line-echo.sh` sends a reply back using the LINE Messaging API
-
-## Troubleshooting
-
-- **Signature verification failed**: Make sure `LINE_CHANNEL_SECRET` is correct
-- **Reply not sent**: Check that `LINE_CHANNEL_ACCESS_TOKEN` is valid and not expired
-- **Webhook not receiving requests**: Ensure your server is publicly accessible via HTTPS
+- LINE signature verification via HMAC-SHA256
+- GitHub webhook signature verification
+- LINE token isolated in forwarder (never exposed to Claude)
 
 ## License
 
