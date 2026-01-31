@@ -42,19 +42,34 @@ fi
 
 log "Reset complete. Restarting webhook server..."
 
-# Restart webhook server
-# Uses pkill to find and restart the webhook process
+# Find current webhook process and capture its environment
 WEBHOOK_PID=$(pgrep -f "webhook -hooks" || true)
 
 if [[ -n "$WEBHOOK_PID" ]]; then
+    # Capture environment variables from running process
+    if [[ -f "/proc/$WEBHOOK_PID/environ" ]]; then
+        log "Capturing environment from PID $WEBHOOK_PID..."
+        eval "$(cat /proc/$WEBHOOK_PID/environ | tr '\0' '\n' | grep -E '^(LINE_|GITHUB_)' | sed 's/^/export /')" 2>/dev/null || true
+    fi
+
     log "Stopping webhook server (PID: $WEBHOOK_PID)..."
     kill "$WEBHOOK_PID" 2>/dev/null || true
     sleep 2
 fi
 
 # Start webhook server in background
-# The server will be started by the process manager (systemd/launchd) or manually
-log "Webhook server stopped. It should be restarted by your process manager."
-log "If running manually, start with: webhook -hooks hooks.json -verbose"
+log "Starting webhook server..."
+cd "$PROJECT_DIR"
+nohup webhook -hooks hooks.json -verbose -port 8080 >> ~/webhook.log 2>&1 &
+
+NEW_PID=$!
+sleep 1
+
+if kill -0 "$NEW_PID" 2>/dev/null; then
+    log "Webhook server started (PID: $NEW_PID)"
+else
+    log_error "Failed to start webhook server"
+    exit 1
+fi
 
 log "Sync complete!"
