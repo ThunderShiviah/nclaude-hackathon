@@ -39,7 +39,7 @@ EOF
 USER_MESSAGE_ESCAPED=$(echo "$USER_MESSAGE" | jq -Rs '.')
 
 # Invoke Claude - response sent by Stop hook
-timeout 120 claude --continue -p "You are Moneta, a helpful LINE bot assistant.
+timeout 120 claude --continue --model opus -p "You are Moneta, a helpful LINE bot assistant.
 
 User message: $USER_MESSAGE_ESCAPED
 
