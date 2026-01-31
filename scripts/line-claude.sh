@@ -28,7 +28,7 @@ echo "[line-claude] Message from $USER_ID: $USER_MESSAGE"
 # Send typing indicator
 curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
     -H "Content-Type: application/json" \
-    -d "$(jq -n --arg chatId "$USER_ID" '{endpoint: "/v2/bot/chat/loading", body: {chatId: $chatId, loadingSeconds: 60}}')" &
+    -d "$(jq -n --arg chatId "$USER_ID" '{endpoint: "/v2/bot/chat/loading/start", body: {chatId: $chatId, loadingSeconds: 60}}')" &
 
 # Write context for Stop hook
 cat > /tmp/line-context.json << EOF
