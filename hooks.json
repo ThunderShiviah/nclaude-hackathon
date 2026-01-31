@@ -9,17 +9,20 @@
         "envname": "LINE_PAYLOAD"
       }
     ],
-    "trigger-rule": {
-      "match": {
-        "type": "payload-hmac-sha256",
-        "secret": "{{ getenv \"LINE_CHANNEL_SECRET\" }}",
-        "parameter": {
-          "source": "header",
-          "name": "X-Line-Signature"
-        }
-      }
-    },
     "http-methods": ["POST"],
     "include-command-output-in-response": false
+  },
+  {
+    "id": "send-message",
+    "execute-command": "./scripts/send-line-message.sh",
+    "command-working-directory": "/home/sprite/line-bot",
+    "pass-environment-to-command": [
+      {
+        "source": "entire-payload",
+        "envname": "LINE_MESSAGE_PAYLOAD"
+      }
+    ],
+    "http-methods": ["POST"],
+    "include-command-output-in-response": true
   }
 ]

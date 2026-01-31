@@ -1,6 +1,6 @@
 #!/bin/bash
 # LINE Claude Bot Script
-# Receives LINE webhook payload, invokes Claude to respond via Push API
+# Receives LINE webhook payload, invokes Claude to respond via local forwarder
 
 if [ -z "${LINE_PAYLOAD:-}" ]; then
     echo "No LINE_PAYLOAD received"
@@ -14,11 +14,8 @@ if [ "$EVENT_TYPE" != "message" ]; then
     exit 0
 fi
 
-# Check if LINE_CHANNEL_ACCESS_TOKEN is set
-if [ -z "$LINE_CHANNEL_ACCESS_TOKEN" ]; then
-    echo "LINE_CHANNEL_ACCESS_TOKEN environment variable not set"
-    exit 1
-fi
+# Get the webhook base URL (same host we're running on)
+WEBHOOK_URL="${WEBHOOK_BASE_URL:-http://localhost:8080}"
 
 # Invoke Claude with the full payload
 timeout 60 claude -p "You are Moneta, a helpful and friendly LINE bot assistant.
@@ -31,18 +28,15 @@ Your task:
 1. Extract the userId from events[0].source.userId
 2. Read the user's message from events[0].message.text
 3. Think of a helpful, friendly response to their message
-4. Send your response using the LINE Push API
+4. Send your response by calling the message forwarder endpoint
 
-IMPORTANT: You MUST execute the curl command to send your response. The LINE_CHANNEL_ACCESS_TOKEN is: $LINE_CHANNEL_ACCESS_TOKEN
+To send your response, execute this curl command (replace USER_ID and YOUR_MESSAGE):
 
-Execute this curl command (replace USER_ID with the actual userId and YOUR_RESPONSE with your message):
-
-curl -s -X POST https://api.line.me/v2/bot/message/push \\
+curl -s -X POST ${WEBHOOK_URL}/hooks/send-message \\
   -H 'Content-Type: application/json' \\
-  -H 'Authorization: Bearer $LINE_CHANNEL_ACCESS_TOKEN' \\
-  -d '{\"to\": \"USER_ID\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_RESPONSE\"}]}'
+  -d '{\"userId\": \"USER_ID\", \"message\": \"YOUR_MESSAGE\"}'
 
-Remember to properly escape any special characters in your response JSON." \
+The forwarder will handle sending to LINE. You just provide userId and message." \
   --allowedTools "Bash" --max-turns 3
 
 exit 0
