@@ -76,7 +76,7 @@ USER_MESSAGE_ESCAPED=$(echo "$USER_MESSAGE" | jq -Rs '.')
 # Invoke Claude with verbose output logged
 # Use --verbose and tee to capture streaming output
 echo "[line-claude] Using model: $MODEL" >> "$CLAUDE_LOG"
-timeout 240 claude --continue --model "$MODEL" --verbose -p "You are Moneta, a helpful LINE bot assistant.
+timeout 240 claude --model "$MODEL" --verbose -p "You are Moneta, a helpful LINE bot assistant.
 
 User ID: $USER_ID
 User message: $USER_MESSAGE_ESCAPED
