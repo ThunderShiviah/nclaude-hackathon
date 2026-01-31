@@ -1,13 +1,13 @@
 #!/bin/bash
-# PreToolUse hook: Block dangerous sprite commands
-# Prevents the LINE bot from creating, listing, or destroying sprites
+# PreToolUse hook: Block sprite list commands
+# Prevents the LINE bot from listing sprites (security/privacy)
 
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-# Check for blocked sprite commands
-if echo "$COMMAND" | grep -qE 'sprite\s+(create|list|ls|destroy|login|logout)'; then
-    echo '{"decision":"block","reason":"Sprite management commands (create, list, destroy, login, logout) are not allowed for security reasons."}'
+# Only block listing sprites (privacy concern)
+if echo "$COMMAND" | grep -qE 'sprite\s+(list|ls)(\s|$)'; then
+    echo '{"decision":"block","reason":"Listing sprites is not allowed for privacy reasons."}'
     exit 0
 fi
 
