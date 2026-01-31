@@ -4,7 +4,7 @@
 # Syncs local repository with remote changes and restarts webhook server.
 #
 # Triggered by: GitHub webhook (push events)
-# Requirements: GITHUB_WEBHOOK_SECRET environment variable must be set
+# Note: Signature verification is handled by webhook tool before this script runs
 #
 
 set -euo pipefail
@@ -20,12 +20,6 @@ log() {
 log_error() {
     echo "$LOG_PREFIX $(date '+%Y-%m-%d %H:%M:%S') ERROR: $1" >&2
 }
-
-# Verify required environment variable
-if [[ -z "${GITHUB_WEBHOOK_SECRET:-}" ]]; then
-    log_error "GITHUB_WEBHOOK_SECRET environment variable is not set"
-    exit 1
-fi
 
 # Change to project directory
 cd "$PROJECT_DIR"
