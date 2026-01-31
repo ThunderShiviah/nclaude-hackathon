@@ -1,0 +1,35 @@
+[
+  {
+    "id": "line-webhook",
+    "execute-command": "./scripts/line-echo.sh",
+    "command-working-directory": "/home/user/nclaude-hackathon",
+    "pass-arguments-to-command": [
+      {
+        "source": "payload",
+        "name": "events.0.replyToken"
+      },
+      {
+        "source": "payload",
+        "name": "events.0.message.text"
+      }
+    ],
+    "trigger-rule": {
+      "match": {
+        "type": "payload-hmac-sha256",
+        "secret": "{{ getenv \"LINE_CHANNEL_SECRET\" }}",
+        "parameter": {
+          "source": "header",
+          "name": "X-Line-Signature"
+        }
+      }
+    },
+    "http-methods": ["POST"],
+    "include-command-output-in-response": false,
+    "parse-parameters-as-json": [
+      {
+        "source": "payload",
+        "name": "events"
+      }
+    ]
+  }
+]
