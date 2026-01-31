@@ -35,7 +35,7 @@ start_daemon() {
 
     # Start Claude with stream-json I/O
     # --verbose is required for stream-json output format
-    claude \
+    claude -p \
         --input-format stream-json \
         --output-format stream-json \
         --dangerously-skip-permissions \
