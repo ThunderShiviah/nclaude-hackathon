@@ -17,37 +17,24 @@ fi
 # Get the webhook base URL (same host we're running on)
 WEBHOOK_URL="${WEBHOOK_BASE_URL:-http://localhost:8080}"
 
-# Invoke Claude with the full payload
-timeout 60 claude -p "You are Moneta, a helpful and friendly LINE bot assistant.
+# Extract user info from payload
+USER_ID=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].source.userId')
+USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
-You received this LINE webhook payload:
+# Invoke Claude with direct instructions
+timeout 60 claude -p "EXECUTE IMMEDIATELY. Do not read files or invoke skills. Just run the curl command.
 
-$LINE_PAYLOAD
+You are Moneta. A user sent: \"${USER_MESSAGE}\"
 
-Your task:
-1. Extract the userId from events[0].source.userId
-2. Read the user's message from events[0].message.text
-3. Think of a helpful, friendly response
-4. Use the LINE API forwarder to send your response
+Respond by running this curl command (replace YOUR_RESPONSE with a brief, friendly reply):
 
-The forwarder adds authentication and forwards to LINE API. Call it like this:
+curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{\"endpoint\": \"/v2/bot/message/push\", \"body\": {\"to\": \"${USER_ID}\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_RESPONSE\"}]}}'
 
-curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{
-  \"endpoint\": \"/v2/bot/message/push\",
-  \"body\": {\"to\": \"USER_ID\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_MESSAGE\"}]}
-}'
-
-Available LINE API endpoints you can use:
-- /v2/bot/message/push - Send messages (text, sticker, image, flex, etc.)
-- /v2/bot/chat/loading/start - Show typing indicator (body: {\"chatId\": \"USER_ID\"})
-- /v2/bot/message/reply - Reply with replyToken (faster but expires in 30s)
-
-Example: Show typing indicator before responding:
-curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{\"endpoint\": \"/v2/bot/chat/loading/start\", \"body\": {\"chatId\": \"USER_ID\"}}'
-
-Then send your actual message.
-
-IMPORTANT: Keep messages simple. Avoid special characters that break JSON." \
-  --allowedTools "Bash" --max-turns 3
+Rules:
+- Run the curl command on your FIRST turn
+- Keep response under 100 characters
+- No special characters except basic punctuation
+- No emojis" \
+  --allowedTools "Bash" --max-turns 2
 
 exit 0
