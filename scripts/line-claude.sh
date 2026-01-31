@@ -27,7 +27,7 @@ jq -n --arg user_id "$USER_ID" --arg webhook_url "${WEBHOOK_BASE_URL:-http://loc
 USER_MESSAGE_SAFE=$(echo "$USER_MESSAGE" | jq -Rs '.' | sed 's/^"//; s/"$//')
 
 # Invoke Claude with --continue to resume previous session
-timeout 60 claude --continue -p "You are Moneta, a helpful and friendly LINE bot assistant.
+timeout 60 claude --continue --dangerously-skip-permissions -p "You are Moneta, a helpful and friendly LINE bot assistant.
 
 User message: ${USER_MESSAGE_SAFE}
 
