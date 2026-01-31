@@ -1,6 +1,6 @@
 #!/bin/bash
 # LINE Claude Bot Script
-# Receives LINE webhook payload, invokes Claude to respond via local forwarder
+# Claude responds naturally; Stop hook sends the response to LINE
 
 if [ -z "${LINE_PAYLOAD:-}" ]; then
     echo "No LINE_PAYLOAD received"
@@ -14,27 +14,25 @@ if [ "$EVENT_TYPE" != "message" ]; then
     exit 0
 fi
 
-# Get the webhook base URL (same host we're running on)
-WEBHOOK_URL="${WEBHOOK_BASE_URL:-http://localhost:8080}"
-
-# Extract user info from payload
+# Extract user info
 USER_ID=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].source.userId')
 USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
-# Invoke Claude with direct instructions
-timeout 60 claude -p "EXECUTE IMMEDIATELY. Do not read files or invoke skills. Just run the curl command.
+# Write context for the Stop hook (env vars don't pass through reliably)
+LINE_CONTEXT_FILE="/tmp/line-context.json"
+jq -n --arg user_id "$USER_ID" --arg webhook_url "${WEBHOOK_BASE_URL:-http://localhost:8080}" \
+    '{user_id: $user_id, webhook_url: $webhook_url}' > "$LINE_CONTEXT_FILE"
 
-You are Moneta. A user sent: \"${USER_MESSAGE}\"
+# Escape message for prompt (use jq to handle special chars)
+USER_MESSAGE_SAFE=$(echo "$USER_MESSAGE" | jq -Rs '.' | sed 's/^"//; s/"$//')
 
-Respond by running this curl command (replace YOUR_RESPONSE with a brief, friendly reply):
+# Invoke Claude - just respond naturally, Stop hook handles LINE API
+timeout 60 claude -p "You are Moneta, a helpful and friendly LINE bot assistant.
 
-curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{\"endpoint\": \"/v2/bot/message/push\", \"body\": {\"to\": \"${USER_ID}\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_RESPONSE\"}]}}'
+User message: ${USER_MESSAGE_SAFE}
 
-Rules:
-- Run the curl command on your FIRST turn
-- Keep response under 100 characters
-- No special characters except basic punctuation
-- No emojis" \
-  --allowedTools "Bash" --max-turns 2
+Respond naturally and helpfully. Keep responses concise (under 200 characters when possible).
+Do not use special characters that might cause issues.
+Just respond with your message - it will be sent to the user automatically."
 
 exit 0
