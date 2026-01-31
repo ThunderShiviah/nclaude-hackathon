@@ -4,6 +4,9 @@
 # Claude skills with credentials
 .claude/skills/line-message.md
 
+# Sprite config (org/sprite specific)
+.sprite
+
 # OS files
 .DS_Store
 Thumbs.db
