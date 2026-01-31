@@ -40,36 +40,17 @@ if ! git reset --hard origin/main; then
     exit 1
 fi
 
-log "Reset complete. Restarting webhook server..."
+log "Reset complete. Reloading webhook server..."
 
-# Find current webhook process and capture its environment
+# Hot reload webhook using SIGHUP (no restart needed)
 WEBHOOK_PID=$(pgrep -f "webhook -hooks" || true)
 
 if [[ -n "$WEBHOOK_PID" ]]; then
-    # Capture environment variables from running process
-    if [[ -f "/proc/$WEBHOOK_PID/environ" ]]; then
-        log "Capturing environment from PID $WEBHOOK_PID..."
-        eval "$(cat /proc/$WEBHOOK_PID/environ | tr '\0' '\n' | grep -E '^(LINE_|GITHUB_)' | sed 's/^/export /')" 2>/dev/null || true
-    fi
-
-    log "Stopping webhook server (PID: $WEBHOOK_PID)..."
-    kill "$WEBHOOK_PID" 2>/dev/null || true
-    sleep 2
-fi
-
-# Start webhook server in a new session (detached from current process tree)
-# Using setsid ensures the new webhook survives even if this script's parent dies
-log "Starting webhook server..."
-cd "$PROJECT_DIR"
-setsid sh -c 'webhook -hooks hooks.json -verbose -port 8080 >> ~/webhook.log 2>&1' &
-
-sleep 2
-
-NEW_PID=$(pgrep -f "webhook -hooks" || true)
-if [[ -n "$NEW_PID" ]]; then
-    log "Webhook server started (PID: $NEW_PID)"
+    log "Sending SIGHUP to webhook (PID: $WEBHOOK_PID) for hot reload..."
+    kill -HUP "$WEBHOOK_PID" 2>/dev/null || true
+    log "Webhook reloaded"
 else
-    log_error "Failed to start webhook server"
+    log_error "Webhook process not found - manual restart required"
     exit 1
 fi
 
