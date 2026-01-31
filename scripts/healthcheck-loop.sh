@@ -13,5 +13,5 @@ while true; do
     -d "{\"events\":[{\"type\":\"message\",\"source\":{\"userId\":\"${USER_ID}\"},\"message\":{\"type\":\"text\",\"text\":\"Heartbeat check at ${TIMESTAMP}. Reply with a short status.\"}}]}" \
     > /dev/null 2>&1
 
-  sleep 60
+  sleep 600
 done
