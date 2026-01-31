@@ -57,15 +57,16 @@ if [[ -n "$WEBHOOK_PID" ]]; then
     sleep 2
 fi
 
-# Start webhook server in background
+# Start webhook server in a new session (detached from current process tree)
+# Using setsid ensures the new webhook survives even if this script's parent dies
 log "Starting webhook server..."
 cd "$PROJECT_DIR"
-nohup webhook -hooks hooks.json -verbose -port 8080 >> ~/webhook.log 2>&1 &
+setsid sh -c 'webhook -hooks hooks.json -verbose -port 8080 >> ~/webhook.log 2>&1' &
 
-NEW_PID=$!
-sleep 1
+sleep 2
 
-if kill -0 "$NEW_PID" 2>/dev/null; then
+NEW_PID=$(pgrep -f "webhook -hooks" || true)
+if [[ -n "$NEW_PID" ]]; then
     log "Webhook server started (PID: $NEW_PID)"
 else
     log_error "Failed to start webhook server"
