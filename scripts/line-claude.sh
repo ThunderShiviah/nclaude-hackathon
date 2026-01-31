@@ -1,26 +1,11 @@
 #!/bin/bash
 # LINE Claude Bot Script
-# Sends messages to persistent Claude daemon
+# Simple: Claude responds, Stop hook sends to LINE
+# Commands run on spoon sprite via sprite exec
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DAEMON_DIR="/tmp/claude-daemon"
-INPUT_PIPE="$DAEMON_DIR/input"
-OUTPUT_FILE="$DAEMON_DIR/output"
 WEBHOOK_URL="${WEBHOOK_BASE_URL:-http://localhost:8080}"
-
-log() {
-    echo "[line-claude] $(date '+%Y-%m-%d %H:%M:%S') $1"
-}
-
-ensure_daemon() {
-    if [ ! -p "$INPUT_PIPE" ]; then
-        log "Starting daemon..."
-        "$SCRIPT_DIR/claude-daemon.sh" start
-        sleep 3
-    fi
-}
 
 if [ -z "${LINE_PAYLOAD:-}" ]; then
     echo "No LINE_PAYLOAD received"
@@ -38,75 +23,29 @@ fi
 USER_ID=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].source.userId')
 USER_MESSAGE=$(echo "$LINE_PAYLOAD" | jq -r '.events[0].message.text')
 
-log "Message from $USER_ID: $USER_MESSAGE"
+echo "[line-claude] Message from $USER_ID: $USER_MESSAGE"
 
-# Send typing indicator immediately
-TYPING_PAYLOAD=$(jq -n \
-    --arg endpoint "/v2/bot/chat/loading" \
-    --arg chatId "$USER_ID" \
-    '{endpoint: $endpoint, body: {chatId: $chatId, loadingSeconds: 30}}')
-
+# Send typing indicator
 curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
     -H "Content-Type: application/json" \
-    -d "$TYPING_PAYLOAD" > /dev/null 2>&1 &
+    -d "$(jq -n --arg chatId "$USER_ID" '{endpoint: "/v2/bot/chat/loading", body: {chatId: $chatId, loadingSeconds: 60}}')" &
 
-ensure_daemon
+# Write context for Stop hook
+cat > /tmp/line-context.json << EOF
+{"user_id": "$USER_ID", "webhook_url": "$WEBHOOK_URL"}
+EOF
 
-# Generate unique request marker
-REQUEST_ID="REQ_$(date +%s%N)_$$"
+# Escape message safely
+USER_MESSAGE_ESCAPED=$(echo "$USER_MESSAGE" | jq -Rs '.')
 
-# Record output position AFTER ensuring daemon is ready
-sleep 0.5
-OUTPUT_POS=$(wc -c < "$OUTPUT_FILE" 2>/dev/null || echo 0)
+# Invoke Claude - response sent by Stop hook
+timeout 120 claude --continue -p "You are Moneta, a helpful LINE bot assistant.
 
-# Send message with USER_ID so Claude can send messages directly
-echo "[USER_ID:$USER_ID] $USER_MESSAGE" > "$INPUT_PIPE"
+User message: $USER_MESSAGE_ESCAPED
 
-# Wait for response - only look at NEW output after our position
-TIMEOUT=30
-ELAPSED=0
-RESPONSE=""
+IMPORTANT: When you need to run commands, prefix them with: sprite -s spoon exec -- bash -c \"...\"
+This runs commands on the spoon compute sprite.
 
-while [ $ELAPSED -lt $TIMEOUT ]; do
-    sleep 1
-    ELAPSED=$((ELAPSED + 1))
+Respond helpfully. Your response will be sent to the user automatically."
 
-    CURRENT_SIZE=$(wc -c < "$OUTPUT_FILE" 2>/dev/null || echo 0)
-    if [ "$CURRENT_SIZE" -gt "$OUTPUT_POS" ]; then
-        # Only read new content
-        NEW_CONTENT=$(tail -c +$((OUTPUT_POS + 1)) "$OUTPUT_FILE")
-        
-        # Get the LAST assistant message from new content only
-        RESPONSE=$(echo "$NEW_CONTENT" | \
-            grep '"type":"assistant"' | \
-            tail -1 | \
-            jq -r '.message.content[0].text // empty' 2>/dev/null || true)
-        
-        if [ -n "$RESPONSE" ]; then
-            # Update position so next request doesn't see this response
-            OUTPUT_POS=$CURRENT_SIZE
-            break
-        fi
-    fi
-done
-
-if [ -z "$RESPONSE" ]; then
-    RESPONSE="Sorry, I couldn't process your message right now."
-    log "No response from daemon"
-fi
-
-log "Response: $RESPONSE"
-
-# Send to LINE via forwarder (Claude may have already sent via Bash tool)
-PAYLOAD=$(jq -n \
-    --arg endpoint "/v2/bot/message/push" \
-    --arg to "$USER_ID" \
-    --arg text "$RESPONSE" \
-    '{endpoint: $endpoint, body: {to: $to, messages: [{type: "text", text: $text}]}}')
-
-RESULT=$(curl -s -X POST "${WEBHOOK_URL}/hooks/send-message" \
-    -H "Content-Type: application/json" \
-    -d "$PAYLOAD")
-
-log "LINE API result: $RESULT"
-echo "$RESPONSE"
+exit 0
