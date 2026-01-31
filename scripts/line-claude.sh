@@ -26,8 +26,8 @@ jq -n --arg user_id "$USER_ID" --arg webhook_url "${WEBHOOK_BASE_URL:-http://loc
 # Escape message for prompt (use jq to handle special chars)
 USER_MESSAGE_SAFE=$(echo "$USER_MESSAGE" | jq -Rs '.' | sed 's/^"//; s/"$//')
 
-# Invoke Claude - just respond naturally, Stop hook handles LINE API
-timeout 60 claude -p "You are Moneta, a helpful and friendly LINE bot assistant.
+# Invoke Claude with --continue to resume previous session
+timeout 60 claude --continue -p "You are Moneta, a helpful and friendly LINE bot assistant.
 
 User message: ${USER_MESSAGE_SAFE}
 
