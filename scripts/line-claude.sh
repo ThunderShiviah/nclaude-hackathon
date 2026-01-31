@@ -27,16 +27,27 @@ $LINE_PAYLOAD
 Your task:
 1. Extract the userId from events[0].source.userId
 2. Read the user's message from events[0].message.text
-3. Think of a helpful, friendly response to their message
-4. Send your response by calling the message forwarder endpoint
+3. Think of a helpful, friendly response
+4. Use the LINE API forwarder to send your response
 
-To send your response, run this curl command:
+The forwarder adds authentication and forwards to LINE API. Call it like this:
 
-curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{"userId": "USER_ID_HERE", "message": "YOUR_MESSAGE_HERE"}'
+curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{
+  \"endpoint\": \"/v2/bot/message/push\",
+  \"body\": {\"to\": \"USER_ID\", \"messages\": [{\"type\": \"text\", \"text\": \"YOUR_MESSAGE\"}]}
+}'
 
-Replace USER_ID_HERE with the actual userId. Replace YOUR_MESSAGE_HERE with your reply.
+Available LINE API endpoints you can use:
+- /v2/bot/message/push - Send messages (text, sticker, image, flex, etc.)
+- /v2/bot/chat/loading/start - Show typing indicator (body: {\"chatId\": \"USER_ID\"})
+- /v2/bot/message/reply - Reply with replyToken (faster but expires in 30s)
 
-CRITICAL: Use only plain text in your message. NO exclamation marks, NO quotes, NO backslashes, NO special characters. Keep it simple." \
+Example: Show typing indicator before responding:
+curl -s -X POST '${WEBHOOK_URL}/hooks/send-message' -H 'Content-Type: application/json' -d '{\"endpoint\": \"/v2/bot/chat/loading/start\", \"body\": {\"chatId\": \"USER_ID\"}}'
+
+Then send your actual message.
+
+IMPORTANT: Keep messages simple. Avoid special characters that break JSON." \
   --allowedTools "Bash" --max-turns 3
 
 exit 0
